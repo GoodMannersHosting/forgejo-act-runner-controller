@@ -1,0 +1,47 @@
+# Multi-stage build that creates both controller and listener binaries
+FROM golang:1.24 AS builder
+ARG TARGETOS
+ARG TARGETARCH
+
+WORKDIR /workspace
+
+# Install UPX for binary compression
+RUN apt-get update && apt-get install -y upx && rm -rf /var/lib/apt/lists/*
+
+# Copy go mod files
+COPY go.mod go.mod
+COPY go.sum go.sum
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the controller binary
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} \
+    go build -a -ldflags="-w -s" -o manager cmd/main.go
+
+# Build the listener binary
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} \
+    go build -a -ldflags="-w -s" -o listener internal/listener/main.go
+
+# Compress both binaries with UPX
+RUN upx --best --lzma -q manager || true
+RUN upx --best --lzma -q listener || true
+
+# Final stage - scratch image with both binaries
+FROM scratch
+WORKDIR /
+
+# Copy both compressed binaries from builder
+COPY --from=builder /workspace/manager /manager
+COPY --from=builder /workspace/listener /listener
+
+# Note: Cannot set USER in scratch image (no /etc/passwd)
+# The binary runs as root, but is statically linked and minimal
+# For production, use Kubernetes securityContext to run as non-root
+
+# Default to running the controller, but both binaries are available
+ENTRYPOINT ["/manager"]
+

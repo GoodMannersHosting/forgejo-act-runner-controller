@@ -1,0 +1,39 @@
+# Build stage for the listener binary
+FROM golang:1.24 AS builder
+ARG TARGETOS
+ARG TARGETARCH
+
+WORKDIR /workspace
+
+# Install UPX for binary compression
+RUN apt-get update && apt-get install -y upx && rm -rf /var/lib/apt/lists/*
+
+# Copy go mod files
+COPY go.mod go.mod
+COPY go.sum go.sum
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the listener binary from local source
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} \
+    go build -a -ldflags="-w -s" -o listener ./internal/listener
+
+# Compress the binary with UPX
+RUN upx --best --lzma -q listener || true
+
+# Final stage - scratch image
+FROM scratch
+WORKDIR /
+
+# Copy the compressed binary from builder
+COPY --from=builder /workspace/listener /listener
+
+# Note: Cannot set USER in scratch image (no /etc/passwd)
+# The binary runs as root, but is statically linked and minimal
+
+ENTRYPOINT ["/listener"]
+

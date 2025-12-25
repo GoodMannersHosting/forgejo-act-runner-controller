@@ -5,9 +5,41 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - forgejo.actions.io.github.com
+  - ""
   resources:
-  - runnerdeployments
+  - pods
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - delete
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
   verbs:
   - create
   - delete
@@ -19,14 +51,42 @@ rules:
 - apiGroups:
   - forgejo.actions.io.github.com
   resources:
-  - runnerdeployments/finalizers
+  - actdeployments
+  - actrunners
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - forgejo.actions.io.github.com
+  resources:
+  - actdeployments/finalizers
+  - actrunners/finalizers
   verbs:
   - update
 - apiGroups:
   - forgejo.actions.io.github.com
   resources:
-  - runnerdeployments/status
+  - actdeployments/status
+  - actrunners/status
   verbs:
   - get
   - patch
   - update
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - rolebindings
+  - roles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch

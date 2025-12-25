@@ -1,0 +1,63 @@
+# Build stage for forgejo-runner binary
+FROM ubuntu:24.04 AS runner-builder
+ARG RUNNER_VERSION=v12.3.1
+ARG TARGETARCH
+
+# Install dependencies for downloading and validating
+RUN apt-get update && apt-get install -y \
+    wget \
+    curl \
+    jq \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Determine architecture and download forgejo-runner
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
+        export ARCH=amd64; \
+    elif [ "$TARGETARCH" = "arm64" ]; then \
+        export ARCH=arm64; \
+    else \
+        echo "Unsupported architecture: $TARGETARCH"; exit 1; \
+    fi && \
+    export RUNNER_NAME="forgejo-runner-${RUNNER_VERSION#v}-linux-${ARCH}" && \
+    export FORGEJO_URL="https://code.forgejo.org/forgejo/runner/releases/download/${RUNNER_VERSION}/${RUNNER_NAME}" && \
+    wget -O /tmp/${RUNNER_NAME} ${FORGEJO_URL} && \
+    wget -O /tmp/${RUNNER_NAME}.sha256 ${FORGEJO_URL}.sha256 && \
+    cd /tmp && \
+    sha256sum -c ${RUNNER_NAME}.sha256 && \
+    mv /tmp/${RUNNER_NAME} /tmp/forgejo-runner && \
+    chmod +x /tmp/forgejo-runner
+
+# Final stage - Ubuntu 24.04 LTS with runner
+FROM ubuntu:24.04
+
+# Install Docker CLI and dependencies
+RUN apt-get update && apt-get install -y \
+    docker.io \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create runner user
+RUN useradd -m -s /bin/bash runner && \
+    usermod -aG docker runner
+
+# Copy forgejo-runner binary from builder
+COPY --from=runner-builder /tmp/forgejo-runner /usr/local/bin/forgejo-runner
+RUN chmod +x /usr/local/bin/forgejo-runner && \
+    chown runner:runner /usr/local/bin/forgejo-runner
+
+# Copy startup script (assuming build context is repo root)
+COPY Dockerfiles/startup.sh /usr/local/bin/startup.sh
+RUN chmod +x /usr/local/bin/startup.sh && \
+    chown runner:runner /usr/local/bin/startup.sh
+
+# Set working directory
+WORKDIR /home/runner
+
+# Switch to runner user
+USER runner
+
+# Default command
+ENTRYPOINT ["/usr/local/bin/startup.sh"]
+

@@ -44,6 +44,7 @@ help: ## Display this help.
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	"$(CONTROLLER_GEN)" rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	@if [ -f hack/patch-crd-size.sh ]; then bash hack/patch-crd-size.sh; fi
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -116,8 +117,20 @@ run: manifests generate fmt vet ## Run a controller from your host.
 # (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: docker-build
-docker-build: ## Build docker image with the manager.
-	$(CONTAINER_TOOL) build -t ${IMG} .
+docker-build: ## Build docker image with the manager (uses combined Dockerfile).
+	$(CONTAINER_TOOL) build -f Dockerfiles/Dockerfile.combined -t ${IMG} .
+
+.PHONY: docker-build-controller
+docker-build-controller: ## Build docker image with only the controller binary.
+	$(CONTAINER_TOOL) build -f Dockerfiles/Dockerfile.controller -t ${IMG} .
+
+.PHONY: docker-build-listener
+docker-build-listener: ## Build docker image with only the listener binary.
+	$(CONTAINER_TOOL) build --platform linux/amd64 --build-arg TARGETOS=linux --build-arg TARGETARCH=amd64 -f Dockerfiles/Dockerfile.listener -t ${IMG} .
+
+.PHONY: docker-build-runner
+docker-build-runner: ## Build docker image with the runner binary.
+	$(CONTAINER_TOOL) build --platform linux/amd64 --build-arg TARGETARCH=amd64 --build-arg RUNNER_VERSION=v12.3.1 -f Dockerfiles/Dockerfile.runner -t ${IMG} .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
@@ -133,7 +146,7 @@ PLATFORMS ?= linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
 .PHONY: docker-buildx
 docker-buildx: ## Build and push docker image for the manager for cross-platform support
 	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
-	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
+	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfiles/Dockerfile.combined > Dockerfile.cross
 	- $(CONTAINER_TOOL) buildx create --name forgejo-act-runner-controller-builder
 	$(CONTAINER_TOOL) buildx use forgejo-act-runner-controller-builder
 	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag ${IMG} -f Dockerfile.cross .
@@ -155,7 +168,16 @@ endif
 .PHONY: install
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	@out="$$( "$(KUSTOMIZE)" build config/crd 2>/dev/null || true )"; \
-	if [ -n "$$out" ]; then echo "$$out" | "$(KUBECTL)" apply -f -; else echo "No CRDs to install; skipping."; fi
+	if [ -n "$$out" ]; then \
+		echo "$$out" | "$(KUBECTL)" create -f - 2>/dev/null || \
+		echo "$$out" | "$(KUBECTL)" replace -f - 2>/dev/null || \
+		{ echo "Error: Failed to install CRDs. If you see annotation size errors, try:"; \
+		  echo "  kubectl delete crd actdeployments.forgejo.actions.io.github.com actrunners.forgejo.actions.io.github.com 2>/dev/null || true"; \
+		  echo "  cd config/crd && kustomize build . | kubectl create -f -"; \
+		  exit 1; }; \
+	else \
+		echo "No CRDs to install; skipping."; \
+	fi
 
 .PHONY: uninstall
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.

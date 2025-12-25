@@ -22,15 +22,14 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	forgejoactionsiov1alpha1 "github.com/goodmannershosting/forgejo-act-runner-controller/api/v1alpha1"
 )
 
-var _ = Describe("RunnerDeployment Controller", func() {
+var _ = Describe("ActDeployment Controller", func() {
 	Context("When reconciling a resource", func() {
 		const resourceName = "test-resource"
 
@@ -40,13 +39,13 @@ var _ = Describe("RunnerDeployment Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		runnerdeployment := &forgejoactionsiov1alpha1.RunnerDeployment{}
+		actdeployment := &forgejoactionsiov1alpha1.ActDeployment{}
 
 		BeforeEach(func() {
-			By("creating the custom resource for the Kind RunnerDeployment")
-			err := k8sClient.Get(ctx, typeNamespacedName, runnerdeployment)
+			By("creating the custom resource for the Kind ActDeployment")
+			err := k8sClient.Get(ctx, typeNamespacedName, actdeployment)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &forgejoactionsiov1alpha1.RunnerDeployment{
+				resource := &forgejoactionsiov1alpha1.ActDeployment{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
@@ -59,16 +58,16 @@ var _ = Describe("RunnerDeployment Controller", func() {
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &forgejoactionsiov1alpha1.RunnerDeployment{}
+			resource := &forgejoactionsiov1alpha1.ActDeployment{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Cleanup the specific resource instance RunnerDeployment")
+			By("Cleanup the specific resource instance ActDeployment")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 		})
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
-			controllerReconciler := &RunnerDeploymentReconciler{
+			controllerReconciler := &ActDeploymentReconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
 			}

@@ -210,11 +210,11 @@ Reconciliation logic:
 2. **Load Secret**: Retrieve token from referenced Secret
 
 3. **Create/Update Listener Deployment**: 
-  - Use `ListenerTemplate` from spec or default template
+- Use `ListenerTemplate` from spec or default template
   - Inject Forgejo connection details as environment variables (ForgejoServer, Organization, Labels, Token)
   - Inject RunnerTemplate (via ConfigMap or environment variable) so listener can copy it to ActRunner resources
   - Set up Kubernetes client (ServiceAccount with RBAC for creating ActRunners and reading RunnerDeployment)
-  - Configure polling interval
+- Configure polling interval
 
 4. **Monitor Listener**: Check listener pod health
 

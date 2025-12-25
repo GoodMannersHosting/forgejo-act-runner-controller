@@ -178,11 +178,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := (&controller.RunnerDeploymentReconciler{
+	if err := (&controller.ActDeploymentReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "RunnerDeployment")
+		setupLog.Error(err, "unable to create controller", "controller", "ActDeployment")
+		os.Exit(1)
+	}
+
+	if err := (&controller.ActRunnerReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ActRunner")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
