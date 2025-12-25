@@ -1,121 +1,68 @@
-# forgejo-act-runner-controller
-// TODO(user): Add simple overview of use/purpose
+# Forgejo Act Runner Controller
+
+The Forgejo Act Runner Controller (FARC) runs as a Kubernetes Operator to provison one-time use Action Runners for use with Forgejo Actions.
 
 ## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+
+The FARC operator takes action on the `ActDeployment` CRD. It provisions a listener which watches a specified organization for specified labels on a given interval. When a job is detected as queued, it creates an `ActRunner` CRD, which then creates a one-time use pod.
+
+> [!WARNING]
+> Forgejo does not support ephemral runners yet, so one-time use offline runners will "build up" unless you trigger the administrative cronjob to remove offline runners. Not ideal, perhaps we can get a PR in for that.
+
+The requirements for getting FARC deployed and operational:
+
+- Operator Container
+- Listener Container
+- Runner Container
+- CRDs
+
+> [!NOTE]
+> Early-access images will be available from `harbor.cloud.danmanners.com`. Once this is more stable, I'll publish the images to my Harbor, ghcr.io, Codeberg, and DockerHub.
 
 ## Getting Started
 
-### Prerequisites
+### Development Prerequisites
 - go version v1.24.6+
 - docker version 17.03+.
 - kubectl version v1.11.3+.
 - Access to a Kubernetes v1.11.3+ cluster.
 
 ### To Deploy on the cluster
+
 **Build and push your image to the location specified by `IMG`:**
 
 ```sh
-make docker-build docker-push IMG=<some-registry>/forgejo-act-runner-controller:tag
+make docker-build docker-push \
+  IMG=<some-registry>/forgejo-act-runner-controller:tag
 ```
 
-**NOTE:** This image ought to be published in the personal registry you specified.
-And it is required to have access to pull the image from the working environment.
-Make sure you have the proper permission to the registry if the above commands don’t work.
+> [!NOTE]
+> Make sure you have the proper permission to your registry target if the above commands don’t work.
 
 **Install the CRDs into the cluster:**
 
 ```sh
-make install
+make generate && make install
 ```
 
 **Deploy the Manager to the cluster with the image specified by `IMG`:**
 
 ```sh
-make deploy IMG=<some-registry>/forgejo-act-runner-controller:tag
+make deploy \
+  IMG=<some-registry>/forgejo-act-runner-controller:tag
 ```
 
-> **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin
-privileges or be logged in as admin.
+> [!NOTE]
+> If you encounter RBAC errors, you'll need to make sure that your controller (or local Kubeconfig) has the appropriate Role/RoleBinding.
+> This will be handled automatically in the near future with the Helm Template.
 
 **Create instances of your solution**
-You can apply the samples (examples) from the config/sample:
 
-```sh
-kubectl apply -k config/samples/
-```
-
->**NOTE**: Ensure that the samples has default values to test it out.
-
-### To Uninstall
-**Delete the instances (CRs) from the cluster:**
-
-```sh
-kubectl delete -k config/samples/
-```
-
-**Delete the APIs(CRDs) from the cluster:**
-
-```sh
-make uninstall
-```
-
-**UnDeploy the controller from the cluster:**
-
-```sh
-make undeploy
-```
-
-## Project Distribution
-
-Following the options to release and provide this solution to the users.
-
-### By providing a bundle with all YAML files
-
-1. Build the installer for the image built and published in the registry:
-
-```sh
-make build-installer IMG=<some-registry>/forgejo-act-runner-controller:tag
-```
-
-**NOTE:** The makefile target mentioned above generates an 'install.yaml'
-file in the dist directory. This file contains all the resources built
-with Kustomize, which are necessary to install this project without its
-dependencies.
-
-2. Using the installer
-
-Users can just run 'kubectl apply -f <URL for YAML BUNDLE>' to install
-the project, i.e.:
-
-```sh
-kubectl apply -f https://raw.githubusercontent.com/<org>/forgejo-act-runner-controller/<tag or branch>/dist/install.yaml
-```
-
-### By providing a Helm Chart
-
-1. Build the chart using the optional helm plugin
-
-```sh
-kubebuilder edit --plugins=helm/v2-alpha
-```
-
-2. See that a chart was generated under 'dist/chart', and users
-can obtain this solution from there.
-
-**NOTE:** If you change the project, you need to update the Helm Chart
-using the same command above to sync the latest changes. Furthermore,
-if you create webhooks, you need to use the above command with
-the '--force' flag and manually ensure that any custom configuration
-previously added to 'dist/chart/values.yaml' or 'dist/chart/manager/manager.yaml'
-is manually re-applied afterwards.
+You can reference the samples from the config/sample directory, or use `kubectl explain ActDeployment` for specifics on configuration requirements.
 
 ## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
 
-**NOTE:** Run `make help` for more information on all potential `make` targets
-
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
+// TODO(user): Add detailed information on how you I would like others to contribute to this project
 
 ## License
 
