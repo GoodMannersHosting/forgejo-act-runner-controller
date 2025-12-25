@@ -122,7 +122,8 @@ docker-build: ## Build docker image with the manager (uses combined Dockerfile).
 
 .PHONY: docker-build-controller
 docker-build-controller: ## Build docker image with only the controller binary.
-	$(CONTAINER_TOOL) build -f Dockerfiles/Dockerfile.controller -t ${IMG} .
+	$(CONTAINER_TOOL) build --platform linux/amd64 --build-arg TARGETOS=linux --build-arg TARGETARCH=amd64 -f Dockerfiles/Dockerfile.controller -t ${IMG} .
+
 
 .PHONY: docker-build-listener
 docker-build-listener: ## Build docker image with only the listener binary.
@@ -172,7 +173,7 @@ install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~
 		echo "$$out" | "$(KUBECTL)" create -f - 2>/dev/null || \
 		echo "$$out" | "$(KUBECTL)" replace -f - 2>/dev/null || \
 		{ echo "Error: Failed to install CRDs. If you see annotation size errors, try:"; \
-		  echo "  kubectl delete crd actdeployments.forgejo.actions.io.github.com actrunners.forgejo.actions.io.github.com 2>/dev/null || true"; \
+		  echo "  kubectl delete crd actdeployments.forgejo.actions.io actrunners.forgejo.actions.io 2>/dev/null || true"; \
 		  echo "  cd config/crd && kustomize build . | kubectl create -f -"; \
 		  exit 1; }; \
 	else \

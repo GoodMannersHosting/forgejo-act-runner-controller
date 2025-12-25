@@ -1,7 +1,7 @@
 # This rule is not used by the project forgejo-act-runner-controller itself.
 # It is provided to allow the cluster admin to help manage permissions for users.
 #
-# Grants full permissions ('*') over forgejo.actions.io.github.com.
+# Grants full permissions ('*') over forgejo.actions.io.
 # This role is intended for users authorized to modify roles and bindings within the cluster,
 # enabling them to delegate specific permissions to other users or groups as needed.
 
@@ -14,13 +14,13 @@ metadata:
   name: actrunner-admin-role
 rules:
 - apiGroups:
-  - forgejo.actions.io.github.com
+  - forgejo.actions.io
   resources:
   - actrunners
   verbs:
   - '*'
 - apiGroups:
-  - forgejo.actions.io.github.com
+  - forgejo.actions.io
   resources:
   - actrunners/status
   verbs:

@@ -49,7 +49,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - forgejo.actions.io.github.com
+  - forgejo.actions.io
   resources:
   - actdeployments
   - actrunners
@@ -62,14 +62,14 @@ rules:
   - update
   - watch
 - apiGroups:
-  - forgejo.actions.io.github.com
+  - forgejo.actions.io
   resources:
   - actdeployments/finalizers
   - actrunners/finalizers
   verbs:
   - update
 - apiGroups:
-  - forgejo.actions.io.github.com
+  - forgejo.actions.io
   resources:
   - actdeployments/status
   - actrunners/status

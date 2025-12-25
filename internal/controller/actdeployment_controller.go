@@ -40,10 +40,10 @@ type ActDeploymentReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=forgejo.actions.io.github.com,resources=actdeployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=forgejo.actions.io.github.com,resources=actdeployments/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=forgejo.actions.io.github.com,resources=actdeployments/finalizers,verbs=update
-// +kubebuilder:rbac:groups=forgejo.actions.io.github.com,resources=actrunners,verbs=get;list;watch
+// +kubebuilder:rbac:groups=forgejo.actions.io,resources=actdeployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=forgejo.actions.io,resources=actdeployments/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=forgejo.actions.io,resources=actdeployments/finalizers,verbs=update
+// +kubebuilder:rbac:groups=forgejo.actions.io,resources=actrunners,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list
@@ -178,12 +178,12 @@ func (r *ActDeploymentReconciler) reconcileListenerRBAC(ctx context.Context, act
 				Verbs:     []string{"get", "list", "create"},
 			},
 			{
-				APIGroups: []string{"forgejo.actions.io.github.com"},
+				APIGroups: []string{"forgejo.actions.io"},
 				Resources: []string{"actdeployments"},
 				Verbs:     []string{"get", "list", "watch"},
 			},
 			{
-				APIGroups: []string{"forgejo.actions.io.github.com"},
+				APIGroups: []string{"forgejo.actions.io"},
 				Resources: []string{"actrunners"},
 				Verbs:     []string{"create", "get", "list", "watch", "update", "patch"},
 			},

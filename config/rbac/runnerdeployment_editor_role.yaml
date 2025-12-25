@@ -1,7 +1,7 @@
 # This rule is not used by the project forgejo-act-runner-controller itself.
 # It is provided to allow the cluster admin to help manage permissions for users.
 #
-# Grants permissions to create, update, and delete resources within the forgejo.actions.io.github.com.
+# Grants permissions to create, update, and delete resources within the forgejo.actions.io.
 # This role is intended for users who need to manage these resources
 # but should not control RBAC or manage permissions for others.
 
@@ -14,7 +14,7 @@ metadata:
   name: runnerdeployment-editor-role
 rules:
 - apiGroups:
-  - forgejo.actions.io.github.com
+  - forgejo.actions.io
   resources:
   - runnerdeployments
   verbs:
@@ -26,7 +26,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - forgejo.actions.io.github.com
+  - forgejo.actions.io
   resources:
   - runnerdeployments/status
   verbs:

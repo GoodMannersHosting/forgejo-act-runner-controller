@@ -65,9 +65,9 @@ patch_crd() {
 }
 
 # Patch ActDeployment CRD
-patch_crd "${CRD_BASE_DIR}/forgejo.actions.io.github.com_actdeployments.yaml"
+patch_crd "${CRD_BASE_DIR}/forgejo.actions.io_actdeployments.yaml"
 
 # Patch ActRunner CRD
-patch_crd "${CRD_BASE_DIR}/forgejo.actions.io.github.com_actrunners.yaml"
+patch_crd "${CRD_BASE_DIR}/forgejo.actions.io_actrunners.yaml"
 
 echo "CRD patching complete!"

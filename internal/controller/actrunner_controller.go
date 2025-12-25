@@ -40,9 +40,9 @@ type ActRunnerReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=forgejo.actions.io.github.com,resources=actrunners,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=forgejo.actions.io.github.com,resources=actrunners/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=forgejo.actions.io.github.com,resources=actrunners/finalizers,verbs=update
+// +kubebuilder:rbac:groups=forgejo.actions.io,resources=actrunners,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=forgejo.actions.io,resources=actrunners/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=forgejo.actions.io,resources=actrunners/finalizers,verbs=update
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;delete
 
@@ -115,7 +115,7 @@ func (r *ActRunnerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
-	// If succeeded or failed, clean up registration token secret and stop reconciling
+	// If succeeded or failed, clean up registration token secret and schedule deletion after 3 minutes
 	if actRunner.Status.Phase == forgejoactionsiov1alpha1.ActRunnerPhaseSucceeded ||
 		actRunner.Status.Phase == forgejoactionsiov1alpha1.ActRunnerPhaseFailed {
 		// Clean up the registration token secret when runner is finished
@@ -125,7 +125,33 @@ func (r *ActRunnerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			log.Error(err, "failed to cleanup registration secret for finished runner")
 			return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 		}
-		return ctrl.Result{}, nil
+
+		// Check if we should delete the ActRunner (3 minutes after completion)
+		if actRunner.Status.CompletedAt != nil {
+			cleanupTime := actRunner.Status.CompletedAt.Time.Add(3 * time.Minute)
+			now := time.Now()
+
+			if now.After(cleanupTime) || now.Equal(cleanupTime) {
+				// 3 minutes have passed, delete the ActRunner
+				// The pod will be automatically cleaned up via owner references
+				log.Info("deleting completed ActRunner", "actRunner", actRunner.Name, "phase", actRunner.Status.Phase, "completedAt", actRunner.Status.CompletedAt)
+				if err := r.Delete(ctx, actRunner); err != nil {
+					log.Error(err, "failed to delete completed ActRunner")
+					return ctrl.Result{}, err
+				}
+				// Don't requeue - deletion is in progress
+				return ctrl.Result{}, nil
+			}
+
+			// Not yet time to delete, requeue for the remaining time
+			remainingTime := cleanupTime.Sub(now)
+			log.V(1).Info("ActRunner completed, will delete after cleanup delay", "actRunner", actRunner.Name, "remainingTime", remainingTime)
+			return ctrl.Result{RequeueAfter: remainingTime}, nil
+		}
+
+		// CompletedAt not set yet (shouldn't happen, but handle gracefully)
+		log.V(1).Info("ActRunner completed but CompletedAt not set, requeuing", "actRunner", actRunner.Name)
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
 	return ctrl.Result{}, nil
@@ -295,6 +321,8 @@ func (r *ActRunnerReconciler) createKubernetesPod(ctx context.Context, actRunner
 
 	// Add DinD sidecar container
 	// We mount the docker-socket volume at /var/docker, and configure dockerd to create the socket there
+	// We use a wrapper script to start dockerd and fix socket permissions so the runner user can access it
+	// This is needed because the docker group GID may differ between containers
 	dindContainer := corev1.Container{
 		Name:  "dind",
 		Image: dindImage,
@@ -307,10 +335,15 @@ func (r *ActRunnerReconciler) createKubernetesPod(ctx context.Context, actRunner
 				Value: "",
 			},
 		},
+		Command: []string{"/bin/sh"},
 		Args: []string{
-			"dockerd",
-			"--host=unix:///var/docker/docker.sock",
-			"--storage-driver=vfs",
+			"-c",
+			// Start dockerd in background and wait for socket to be created, then fix permissions
+			"dockerd --host=unix:///var/docker/docker.sock --storage-driver=vfs & " +
+				"DOCKER_PID=$! && " +
+				"until [ -S /var/docker/docker.sock ]; do sleep 0.1; done && " +
+				"chmod 666 /var/docker/docker.sock && " +
+				"wait $DOCKER_PID",
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{

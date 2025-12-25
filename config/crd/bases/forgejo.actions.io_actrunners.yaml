@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.19.0
-  name: actrunners.forgejo.actions.io.github.com
+  name: actrunners.forgejo.actions.io
 spec:
-  group: forgejo.actions.io.github.com
+  group: forgejo.actions.io
   names:
     kind: ActRunner
     listKind: ActRunnerList
