@@ -31,14 +31,12 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
 # Final stage - Ubuntu 24.04 LTS with runner
 FROM ubuntu:24.04
 
-# Install Docker CLI and dependencies
-RUN apt-get update && apt-get install -y \
-    docker.io \
-    ca-certificates \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# Copy and run act-tools.sh to install dependencies
+COPY Dockerfiles/act-tools.sh /opt/act-tools.sh
+RUN chmod +x /opt/act-tools.sh && \
+    /opt/act-tools.sh
 
-# Create runner user
+# Create runner user (must be after docker.io is installed)
 RUN useradd -m -s /bin/bash runner && \
     usermod -aG docker runner
 
